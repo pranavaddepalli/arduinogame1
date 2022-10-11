@@ -1,5 +1,5 @@
 /*
- * 2040-shape
+ * Arduino Aimlab
  * Pranav Addepalli
  * for CMU's 05-333 course
  */
@@ -37,10 +37,6 @@ int basey;
 
 // this is the level we require for a direction to be activated
 const int joybuffer = 50;
-
-// these are mutex locks for the directions so we only send one signal
-int joyxlock = false;
-int joyylock = false;
 
 /* 
  *  Rows: ON - HIGH, OFF - LOW
@@ -123,51 +119,45 @@ void show(int image[]){
 
 // this returns a string representing what direction the joystick is in
 // return values are 'none', 'right', 'left', 'up', or 'down'
-String joydir() {
+String joyDir() {
   String dir = "none";
   
   int currx = analogRead(joyx);
   int curry = analogRead(joyy);
   
-  if (currx == 1023 && !joyxlock) {
-    joyxlock = true;
+  if (currx == 1023) {
     dir = "left";
   }
-  if (currx == 0 && !joyxlock) {
-    joyxlock = true;
+  if (currx == 0) {
     dir = "right";
   }
-  if (curry == 1023 && !joyylock) {
-    joyylock = true;
+  if (curry == 1023) {    
     dir = "down";
   }
-  if (curry == 0 && !joyylock) {
-    joyylock = true;
+  if (curry == 0) {
     dir = "up";
   }
-
-  // reset lock if it gets back
-  Serial.print("currs");
-  Serial.println(currx);
-  Serial.println(basex + joybuffer);
-  
-  if (currx == basex + joybuffer || currx == basex - joybuffer){
-    joyxlock = false;
-  }
-  if (curry == basey + joybuffer || curry == basey - joybuffer){
-    joyylock = false;
-  }
-  Serial.println(joyxlock);
-  Serial.println(joyylock);
-  delay(1000);
   return dir;
 }
-
 
 //===============================================================================
 // CORE GAME LEVEL CODE
 //===============================================================================
 
+// these will track where the cursor is
+int r = 5;
+int c = 5;
+
+// this will read the joystick, map it to the matrix, and turn on that pixel
+void readJoy(){
+  // turn off the last position:
+  matrix[r][c] = LOW;
+  // read the sensors for X and Y values:
+  r = map(analogRead(joyy), 0, 1023, 0, 7);
+  c = 7 - map(analogRead(joyx), 0, 1023, 0, 7);
+  // set new position
+  matrix[r][c] = HIGH;
+}
 
 
 //===============================================================================
@@ -207,9 +197,6 @@ void setup() {
 
   // blank out the matrix
   blank();
-
-  // setup the game
-//  startGame();
     
   // render the matrix
   render();
@@ -220,7 +207,8 @@ void loop() {
   // put your main code here, to run repeatedly:
   int smileface[8] = {0b0, 0b00000100, 0b01110010, 0b00000010, 0b00000010, 0b01110010, 0b00000100, 0x00};
   int sadface[8] = {0b0, 0b00000001, 0b01110010, 0b00000010, 0b00000010, 0b01110010, 0b00000001, 0x00};
-  
+
+  readJoy();
   
   render();
 }
