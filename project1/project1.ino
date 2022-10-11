@@ -168,146 +168,6 @@ String joydir() {
 // CORE GAME LEVEL CODE
 //===============================================================================
 
-/* a box is a 2-by-2 square on the matrix specified by its top left row and column
- *  boxes have five types: 0 (empty), 1, 2, 3, and 4, for the number of pixels, filled from the top left
- */
-struct box {
-  int row;
-  int col;
-  int type;
-};
-
-// this is the grid for the game
-box gameGrid[4][4];
-
-// this keeps track of what turn the user is on
-int turn = 0;
-
-// transforms the game grid to the LED matrix
-void showGame(){
-  for(int boxr = 0; boxr < 4; boxr++) {
-    for(int boxc = 0; boxc < 4; boxc++) {
-      box a = gameGrid[boxr][boxc];
-      
-      int aMatrixRow = a.row * 2;
-      int aMatrixCol = a.col * 2;
-      
-      if(a.type == 0){
-        // all four LEDs need to be OFF
-        matrix[aMatrixRow][aMatrixCol] = LOW;
-        matrix[aMatrixRow + 1][aMatrixCol] = LOW;
-        matrix[aMatrixRow][aMatrixCol + 1] = LOW;
-        matrix[aMatrixRow + 1][aMatrixCol + 1] = LOW;
-      }
-      else if(a.type == 1){
-        // top left is ON
-        matrix[aMatrixRow][aMatrixCol] = HIGH;
-        matrix[aMatrixRow + 1][aMatrixCol] = LOW;
-        matrix[aMatrixRow][aMatrixCol + 1] = LOW;
-        matrix[aMatrixRow + 1][aMatrixCol + 1] = LOW;
-      }
-      else if(a.type == 2){
-        // top is ON
-        matrix[aMatrixRow][aMatrixCol] = HIGH;
-        matrix[aMatrixRow + 1][aMatrixCol] = LOW;
-        matrix[aMatrixRow][aMatrixCol + 1] = HIGH;
-        matrix[aMatrixRow + 1][aMatrixCol + 1] = LOW;
-      }
-      else if(a.type == 3){
-        // top is ON, bottom left is ON
-        matrix[aMatrixRow][aMatrixCol] = HIGH;
-        matrix[aMatrixRow + 1][aMatrixCol] = HIGH;
-        matrix[aMatrixRow][aMatrixCol + 1] = HIGH;
-        matrix[aMatrixRow + 1][aMatrixCol + 1] = LOW;
-      }
-      else if(a.type == 4){
-        // all ON
-        matrix[aMatrixRow][aMatrixCol] = HIGH;
-        matrix[aMatrixRow + 1][aMatrixCol] = HIGH;
-        matrix[aMatrixRow][aMatrixCol + 1] = HIGH;
-        matrix[aMatrixRow + 1][aMatrixCol + 1] = HIGH;
-      }
-    }
-  }
-}
-
-// resets the game to an empty screen
-void resetGame(){
-  for(int boxr = 0; boxr < 4; boxr++) {
-    for(int boxc = 0; boxc < 4; boxc++) {
-      // set all boxes to empty
-      gameGrid[boxr][boxc].type = 0;
-    }
-  }
-
-  showGame();
-}
-
-// starts the game with an empty screen
-void startGame(){
-  for(int boxr = 0; boxr < 4; boxr++) {
-    for(int boxc = 0; boxc < 4; boxc++) {
-      // initialize box rows, cols, and type as empty
-      box a = {boxr, boxc, 0};
-      gameGrid[boxr][boxc] = a;
-    }
-  }
-
-  showGame();
-}
-
-// checks if the game is full (no more boxes left)
-bool gameFull(){
-  for(int boxr = 0; boxr < 4; boxr++) {
-    for(int boxc = 0; boxc < 4; boxc++) {
-      if(gameGrid[boxr][boxc].type == 0){
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-// spawns a box at a randomly chosen spot of randomly chosen size in the gamegrid
-void spawnBox(){
-
-  box next = {(int)random(0, 5), (int)random(0, 5), (int)random(1, 5)};
-  int i = 0;
-  // repeat until we find a free spot
-  while(gameGrid[next.row][next.col].type != 0){
-    // taken, so recalculate row and col
-    next.row = random(0, 5);
-    next.col = random(0, 5);
-    next.type = random(1, 5);
-  }
-  // we found an empty box so we can place it there
-  gameGrid[next.row][next.col] = next;
-
-}
-
-// advances the game by a turn based on what direction the user moved the joystick
-void advanceGame(String dir){
-  // first check if the game is full
-  if(gameFull()){
-    Serial.println("Game over");
-    return;
-  }
-  turn++;
-  Serial.print("turn"); Serial.println(turn);
-
-  // spawn a box
-  
-  
-  showGame(); 
-}
-
-
-// monitors user input and runs the game based on inputs
-void runGame(){
-  advanceGame(joydir());
-  Serial.println(joydir());
-}
-
 
 
 //===============================================================================
@@ -349,7 +209,7 @@ void setup() {
   blank();
 
   // setup the game
-  startGame();
+//  startGame();
     
   // render the matrix
   render();
@@ -360,9 +220,7 @@ void loop() {
   // put your main code here, to run repeatedly:
   int smileface[8] = {0b0, 0b00000100, 0b01110010, 0b00000010, 0b00000010, 0b01110010, 0b00000100, 0x00};
   int sadface[8] = {0b0, 0b00000001, 0b01110010, 0b00000010, 0b00000010, 0b01110010, 0b00000001, 0x00};
-
-//  Serial.println(turn);
-  runGame();
+  
   
   render();
 }
