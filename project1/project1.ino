@@ -117,6 +117,50 @@ void show(int image[]){
   }
 }
 
+// constant bit patterns for rendering digits on the matrix
+int firstDigits[10][4] = {
+   {0b01111110, 0b01000010, 0b01111110, 0},
+   {0, 0b01111110, 0, 0},
+   {0b01011110, 0b01010010, 0b01110010, 0},
+   {0b01010010, 0b01010010, 0b01111110, 0},
+   {0b01110000, 0b00010000, 0b01111110, 0},
+   {0b01110010, 0b01010010, 0b01011110, 0},
+   {0b01111110, 0b01001010, 0b01001110, 0},
+   {0b01000000, 0b01000000, 0b01111110, 0},
+   {0b01111110, 0b01001010, 0b01111110, 0},
+   {0b01110000, 0b01010000, 0b01111110, 0}
+   };
+
+int secondDigits[10][4] = {
+  {0, 0b01111110, 0b01000010, 0b01111110},
+  {0, 0, 0, 0b01111110},
+  {0, 0b01011110, 0b01010010, 0b01110010},
+  {0, 0b01010010, 0b01010010, 0b01111110},
+  {0, 0b01110000, 0b00010000, 0b01111110},
+  {0, 0b01110010, 0b01010010, 0b01011110},
+  {0, 0b01111110, 0b01001010, 0b01001110},
+  {0, 0b01000000, 0b01000000, 0b01111110},
+  {0, 0b01111110, 0b01001010, 0b01111110},
+  {0, 0b01110000, 0b01010000, 0b01111110}
+};
+
+// this puts two digits together into one image and shows it
+void showTwoDigits(int a, int b) {
+  int img[] = {0, 0, 0, 0, 0, 0, 0, 0};
+  for(int i = 0; i < 4; i++){
+    img[i] = firstDigits[a][i];
+    img[i + 4] = secondDigits[b][i];
+  }
+  show(img);
+}
+
+// this displays a two digit integer on the matrix
+void showNum(int num) {
+  int tens = num / 10;
+  int ones = num % 10;
+  showTwoDigits(tens, ones);
+}
+
 // this returns a string representing what direction the joystick is in
 // return values are 'none', 'right', 'left', 'up', or 'down'
 String joyDir() {
@@ -144,19 +188,111 @@ String joyDir() {
 // CORE GAME LEVEL CODE
 //===============================================================================
 
-// these will track where the cursor is
+// this is how long the game takes (in seconds)
+const int gameTime = 10;
+
+// this will track the user's score
+int score = 0;
+
+// these will track where the pointer is
 int r = 5;
 int c = 5;
 
-// this will read the joystick, map it to the matrix, and turn on that pixel
-void readJoy(){
+// these will track the current target (2 by 2 specified by the top left row, col)
+int targetR;
+int targetC;
+
+// this will track the start time of the game
+int startt = millis() / 1000; 
+
+// checks if the time is up and updates game timer
+bool checkTimer() {
+  int timeleft = gameTime + startt - (millis() / 1000);
+  // show the timer
+  if (timeleft <= 10 && timeleft > 8){
+    oncol(7, 0xFF);
+  }
+  if (timeleft <= 8){
+    int remaining = ~((0xFF << timeleft) & 0xFF);
+    oncol(7, remaining);
+  }
+  
+  return timeleft > 0;
+}
+
+// turns the target at targetR, targetC to ON
+void targetOn() {
+  matrix[targetR][targetC] = HIGH;
+  matrix[targetR + 1][targetC] = HIGH;
+  matrix[targetR + 1][targetC + 1] = HIGH;
+  matrix[targetR][targetC + 1] = HIGH;
+}
+
+// turns the target at targetR, targetC to OFF
+void targetOff() {
+  matrix[targetR][targetC] = LOW;
+  matrix[targetR + 1][targetC] = LOW;
+  matrix[targetR + 1][targetC + 1] = LOW;
+  matrix[targetR][targetC + 1] = LOW;
+}
+
+// checks if the pointer is in the current target
+bool inTarget() {
+  return ( (r == targetR && c == targetC)
+    || (r == targetR + 1 && c == targetC)
+    || (r == targetR && c == targetC + 1)
+    || (r == targetR + 1 && c == targetC + 1));
+}
+
+// this will spawn the next target on the game randomly
+void spawnTarget() {
+  // turn off the old target
+  targetOff();
+  
+  targetR = random(0, 7);
+  targetC = random(0, 6);
+
+  // make sure it is not the cursor position
+  while(inTarget()) {
+    targetR = random(0, 7);
+    targetC = random(0, 6);
+  }
+
+  // turn it on
+  targetOn();
+}
+
+
+// shows the game over screen (flashes all)
+void gameOver() {
+  blank();
+  showNum(score);
+}
+
+// runs the game
+int runGame() {
+  
+  // update timer and check if we still have time left
+  if(!checkTimer()) {
+    return -1;
+  }
+  
   // turn off the last position:
   matrix[r][c] = LOW;
   // read the sensors for X and Y values:
   r = map(analogRead(joyy), 0, 1023, 0, 7);
-  c = 7 - map(analogRead(joyx), 0, 1023, 0, 7);
+  c = 6 - map(analogRead(joyx), 0, 1023, 0, 6);
+
+  // if we made it to the target, update score!
+  if(inTarget()){
+    score++;
+    spawnTarget();
+  }
+  
   // set new position
   matrix[r][c] = HIGH;
+
+  return 0;
 }
 
 
@@ -197,7 +333,13 @@ void setup() {
 
   // blank out the matrix
   blank();
-    
+
+  // start the game timer
+//  timerStart();
+
+  // create the first target
+  spawnTarget();
+  
   // render the matrix
   render();
 }
@@ -207,8 +349,10 @@ void loop() {
   // put your main code here, to run repeatedly:
   int smileface[8] = {0b0, 0b00000100, 0b01110010, 0b00000010, 0b00000010, 0b01110010, 0b00000100, 0x00};
   int sadface[8] = {0b0, 0b00000001, 0b01110010, 0b00000010, 0b00000010, 0b01110010, 0b00000001, 0x00};
-
-  readJoy();
   
+  
+  if (runGame() < 0){
+    gameOver();
+  }
   render();
 }
